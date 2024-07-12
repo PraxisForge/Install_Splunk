@@ -92,7 +92,12 @@ while true; do
 done
 
 while true; do
-    read -p "Enter the file extension [tgz, rpm, deb]: " EXTENSION
+    if [[ "$OS_RELEASE" == "amazon-linux" || "$OS_RELEASE" == "red-hat" || "$OS_RELEASE" == "centos" ]]; then
+        read -p "Enter the file extension [tgz, rpm]: " EXTENSION
+    else
+        read -p "Enter the file extension [tgz, deb]: " EXTENSION
+    fi
+
     if [[ "$EXTENSION" == "tgz" || "$EXTENSION" == "rpm" || "$EXTENSION" == "deb" ]]; then
         break
     else
@@ -100,8 +105,10 @@ while true; do
     fi
 done
 
-if [[ "$EXTENSION" == "rpm" || "$EXTENSION" == "deb" ]]; then
-    read -p "Enter The Splunk File Name (copy it from the wget link, e.g., splunk-9.2.2-d76edf6f0a15-linux-2.6-amd64.deb, splunk-9.2.2-d76edf6f0a15.x86_64.rpm): " FILENAME
+if [[ "$EXTENSION" == "rpm" ]]; then
+    read -p "Enter The Splunk File Name (copy it from the wget link, e.g., splunk-9.2.2-d76edf6f0a15.x86_64.rpm): " FILENAME
+elif [[ "$EXTENSION" == "deb" ]]; then
+    read -p "Enter The Splunk File Name (copy it from the wget link, e.g., splunk-9.2.2-d76edf6f0a15-linux-2.6-amd64.deb): " FILENAME
 else
     if [[ "$COMPONENT" == "indexer" || "$COMPONENT" == "search_head" || "$COMPONENT" == "heavy_forwarder" ]]; then
         case "$VERSION" in
@@ -250,7 +257,6 @@ case "${FILENAME##*.}" in
         sudo dpkg -i "$FILENAME" > /dev/null 2>&1 && echo -e "\033[33mCompleted the process of installing $FILENAME\033[0m"
         ;;
     rpm)
-        chmod 644 "$FILENAME"
         sudo rpm -i "$FILENAME" > /dev/null 2>&1 && echo -e "\033[33mCompleted the process of installing $FILENAME\033[0m"
         ;;
     *)
