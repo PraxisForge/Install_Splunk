@@ -51,7 +51,8 @@ Enter the file extension [tgz, rpm, deb]:tgz
 For file formats such as RPM and DEB, you will be prompted to enter the file name. Please copy those file names as mentioned in the wget link. For example:
 
 ```bash
-Enter The Splunk File Name (copy it from the wget link, e.g., splunk-9.2.2-d76edf6f0a15-linux-2.6-amd64.deb, splunk-9.2.2-d76edf6f0a15.x86_64.rpm):splunk-9.2.2-d76edf6f0a15.x86_64.rpm
+Enter The Splunk File Name (copy it from the wget link, e.g., splunk-9.2.2-d76edf6f0a15.x86_64.rpm):splunk-9.2.2-d76edf6f0a15.x86_64.rpm
+Enter The Splunk File Name (copy it from the wget link, e.g., splunk-9.2.2-d76edf6f0a15-linux-2.6-amd64.deb): splunk-9.2.2-d76edf6f0a15-linux-2.6-amd64.deb
 ```
 **Note:** Please enter a valid file name as mentioned in the wget link while installing Splunk software using RPM and DEB file formats.
 
