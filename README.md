@@ -30,14 +30,14 @@ Enter Linux Distribution Name [amazon-linux, ubuntu, red-hat, centos]:amazom-lin
 After this step, you will be prompted to enter a username to create a user who will have control over the installed Splunk software. For example:
 
 ```bash
-Enter username:splunk
+Enter Non-Root Username:splunk
 ```
 **Note:** Make sure to enter the new user whom you want to have control over the Splunk software.
 
 In the next step, you will be prompted to enter a password to set it for the newly created user. For example:
 
 ```bash
-Enter password for splunk:
+Enter Password for splunk:
 ```
 After entering the password, you will need to specify the Splunk component, version, and file format you are trying to install. For example:
 
