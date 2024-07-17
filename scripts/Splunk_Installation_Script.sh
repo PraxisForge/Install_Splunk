@@ -26,11 +26,11 @@ fi
 
 # Prompt for username and password
 while true; do
-    read -p "Enter username: " USERNAME
+    read -p "Enter Non-Root Username: " USERNAME
 
      while true; do
         # Get password from the user (hidden input)
-        read -p "Enter password for $USERNAME: " -s PASSWORD
+        read -p "Enter Password for $USERNAME: " -s PASSWORD
         echo -e "\n"
 
         # Ensure password is not empty
