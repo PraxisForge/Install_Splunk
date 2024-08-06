@@ -269,8 +269,6 @@ esac
 # Change ownership of the Splunk installation
 if [ "$COMPONENT" == "universal_forwarder" ]; then
     sudo chown -R "$USERNAME":"$USERNAME" /opt/splunkforwarder 
-    # Enable Splunk to start at boot with the new user
-    sudo /opt/splunkforwarder/bin/splunk enable boot-start -user "$USERNAME" && echo -e "\033[33mEnabled boot start for $USERNAME for Splunk $COMPONENT\033[0m"
 else
     # Change ownership of the Splunk installation
     sudo chown -R "$USERNAME":"$USERNAME" /opt/splunk
