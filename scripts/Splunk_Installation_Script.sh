@@ -1,36 +1,41 @@
 #!/bin/bash
+set -e
 
-# Increase the maximum number of open files
-ulimit -n 64000
-
-# Disable Transparent Huge Pages (THP)
-echo never | sudo tee /sys/kernel/mm/transparent_hugepage/enabled > /dev/null 2>&1
-echo never | sudo tee /sys/kernel/mm/transparent_hugepage/defrag > /dev/null 2>&1 && echo -e "\033[33mulimit and defrag values have been changed successfully\033[0m"
-
-# Prompt for the Linux distribution name
-while true; do
-    read -p "Enter Linux Distribution Name [amazon-linux, ubuntu, red-hat, centos]: " OS_RELEASE
-    if [[ "$OS_RELEASE" == "amazon-linux" || "$OS_RELEASE" == "ubuntu" || "$OS_RELEASE" == "red-hat" || "$OS_RELEASE" == "centos" ]]; then
-        break
+# Function to get the distribution name
+get_distro() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        echo "$NAME"
+    elif type lsb_release >/dev/null 2>&1; then
+        lsb_release -si
+    elif [ -f /etc/lsb-release ]; then
+        . /etc/lsb-release
+        echo "$DISTRIB_ID"
+    elif [ -f /etc/debian_version ]; then
+        echo "Debian"
+    elif [ -f /etc/redhat-release ]; then
+        echo "Red Hat"
     else
-        echo -e "\033[31mInvalid input. Please enter a valid Linux Distribution Name: amazon-linux, ubuntu, red-hat, centos\033[0m"
+        echo "Unknown"
     fi
-done
+}
 
-# Install the wget command based on the Linux distribution
-if [[ "$OS_RELEASE" == "amazon-linux" || "$OS_RELEASE" == "red-hat" || "$OS_RELEASE" == "centos" ]]; then
-    sudo yum install wget -y > /dev/null 2>&1
-elif [[ "$OS_RELEASE" == "ubuntu" ]]; then
-    sudo apt-get install wget -y > /dev/null 2>&1
-fi
+# Assign the distribution name to a variable
+OS_RELEASE=$(get_distro)
 
 # Prompt for username and password
 while true; do
     read -p "Enter Non-Root Username: " USERNAME
 
-     while true; do
+    # Validate username
+    if [[ "$USERNAME" =~ [^a-zA-Z0-9] ]] || [ -z "$USERNAME" ]; then
+        echo "Invalid username. Please enter a valid username (alphanumeric characters only)."
+        continue
+    fi
+
+    while true; do
         # Get password from the user (hidden input)
-        read -p "Enter Password for $USERNAME: " -s PASSWORD
+        read -s -p "Enter Password for $USERNAME: " PASSWORD
         echo -e "\n"
 
         # Ensure password is not empty
@@ -42,24 +47,24 @@ while true; do
     done
 
     # Create the user with home directory and set password
-    echo "$PASSWORD" | sudo useradd -m -s /bin/bash "$USERNAME" --password "$(openssl passwd -1 "$PASSWORD")" > /dev/null 2>&1 && echo -e "\033[33mNew Password was set to the user $USERNAME\033[0m"
-
-    # Check for successful user creation
-    if [[ $? -eq 0 ]]; then
-        echo -e "\033[33mUser $USERNAME created successfully!\033[0m"
-        break
-	elif id "$USERNAME" >/dev/null 2>&1; then
+    if id "$USERNAME" >/dev/null 2>&1; then
         echo -e "\033[33mUser $USERNAME already exists!\033[0m"
         break
     else
-        echo -e "\033[31mError: Failed to create user $USERNAME !\033[0m"
+        if sudo useradd -m -s /bin/bash "$USERNAME" --password "$(openssl passwd -1 "$PASSWORD")" > /dev/null 2>&1; then
+            break
+        else
+            echo -e "\033[31mError: Failed to create user $USERNAME !\033[0m"
+        fi
     fi
 done
 
-# Add the new user to the appropriate admin group based on the Linux distribution
-if [[ "$OS_RELEASE" == "amazon-linux" || "$OS_RELEASE" == "red-hat" || "$OS_RELEASE" == "centos" ]]; then
+# Install the wget command based on the Linux distribution
+if [[ "$OS_RELEASE" == "Amazon Linux" || "$OS_RELEASE" == "Red Hat Enterprise Linux" || "$OS_RELEASE" == "CentOS" ]]; then
+    sudo yum install wget -y > /dev/null 2>&1
     sudo usermod -aG wheel "$USERNAME"
 else
+    sudo apt-get install wget -y > /dev/null 2>&1
     sudo usermod -aG sudo "$USERNAME"
 fi
 
@@ -73,15 +78,17 @@ while true; do
     fi
 done
 
+# Validate the component and set the valid versions
 if [[ "$COMPONENT" == "indexer" || "$COMPONENT" == "search_head" || "$COMPONENT" == "heavy_forwarder" ]]; then
-    valid_versions=('9.2.2' '9.2.1' '9.2.0.1' '9.2.0' '9.1.5' '9.1.4' '9.1.3' '9.1.2' '9.1.1' '9.1.0.2' '9.1.0.1' '9.1.0' '9.0.9' '9.0.8' '9.0.7' '9.0.6' '9.0.5.1' '9.0.5' '9.0.4.1' '9.0.4' '9.0.3' '9.0.2' '9.0.10' '9.0.1' '9.0.0.1' '9.0.0' '8.2.9' '8.2.8' '8.2.7.1' '8.2.7' '8.2.6.1' '8.2.6' '8.2.5' '8.2.4.3' '8.2.4.1' '8.2.4' '8.2.3.3' '8.2.3.2' '8.2.3' '8.2.2.2' '8.2.2.1' '8.2.12' '8.2.11.2' '8.2.11' '8.2.10' '8.2.1' '8.2.0' '8.1.9' '8.1.8' '8.1.7.2' '8.1.7.1' '8.1.7' '8.1.6' '8.1.14' '8.1.13' '8.1.12' '8.1.11' '8.1.10.1')
+    valid_versions=('9.3.0' '9.2.2' '9.2.1' '9.2.0.1' '9.2.0' '9.1.5' '9.1.4' '9.1.3' '9.1.2' '9.1.1' '9.1.0.2' '9.1.0.1' '9.1.0' '9.0.9' '9.0.8' '9.0.7' '9.0.6' '9.0.5.1' '9.0.5' '9.0.4.1' '9.0.4' '9.0.3' '9.0.2' '9.0.10' '9.0.1' '9.0.0.1' '9.0.0' '8.2.9' '8.2.8' '8.2.7.1' '8.2.7' '8.2.6.1' '8.2.6' '8.2.5' '8.2.4.3' '8.2.4.1' '8.2.4' '8.2.3.3' '8.2.3.2' '8.2.3' '8.2.2.2' '8.2.2.1' '8.2.12' '8.2.11.2' '8.2.11' '8.2.10' '8.2.1' '8.2.0' '8.1.9' '8.1.8' '8.1.7.2' '8.1.7.1' '8.1.7' '8.1.6' '8.1.14' '8.1.13' '8.1.12' '8.1.11' '8.1.10.1')
 elif [[ "$COMPONENT" == "universal_forwarder" ]]; then
-    valid_versions=('9.2.1' '9.2.0.1' '9.2.0' '9.1.5' '9.1.4' '9.1.3' '9.1.2' '9.1.1' '9.1.0.1' '9.1.0' '9.0.9' '9.0.8' '9.0.7' '9.0.6' '9.0.5' '9.0.4' '9.0.3' '9.0.2' '9.0.10' '9.0.1' '9.0.0.1' '9.0.0' '8.2.9' '8.2.8' '8.2.7.1' '8.2.7' '8.2.6.1' '8.2.6' '8.2.5' '8.2.4' '8.2.3' '8.2.2.1' '8.2.2' '8.2.12' '8.2.11' '8.2.10' '8.2.1' '8.2.0' '8.1.9' '8.1.8' '8.1.7' '8.1.6' '8.1.5' '8.1.4' '8.1.3' '8.1.2' '8.1.14' '8.1.13' '8.1.12' '8.1.11' '8.1.10.1' '8.1.10' '8.1.1' '8.1.0.1' '8.1.0' '8.0.9' '8.0.8' '8.0.7' '8.0.6' '8.0.10')
+    valid_versions=('9.3.0' '9.2.2' '9.2.1' '9.2.0.1' '9.2.0' '9.1.5' '9.1.4' '9.1.3' '9.1.2' '9.1.1' '9.1.0.1' '9.1.0' '9.0.9' '9.0.8' '9.0.7' '9.0.6' '9.0.5' '9.0.4' '9.0.3' '9.0.2' '9.0.10' '9.0.1' '9.0.0.1' '9.0.0' '8.2.9' '8.2.8' '8.2.7.1' '8.2.7' '8.2.6.1' '8.2.6' '8.2.5' '8.2.4' '8.2.3' '8.2.2.1' '8.2.2' '8.2.12' '8.2.11' '8.2.10' '8.2.1' '8.2.0' '8.1.9' '8.1.8' '8.1.7' '8.1.6' '8.1.5' '8.1.4' '8.1.3' '8.1.2' '8.1.14' '8.1.13' '8.1.12' '8.1.11' '8.1.10.1' '8.1.10')
 else
     echo -e "\033[31mInvalid component. Please choose either 'indexer', 'search_head', 'heavy_forwarder', or 'universal_forwarder'.\033[0m"
     exit 1
 fi
 
+# Validate the version
 while true; do
     read -p "Enter The Splunk $COMPONENT Version :" VERSION
     if [[ " ${valid_versions[@]} " =~ " ${VERSION} " ]]; then
@@ -91,8 +98,9 @@ while true; do
     fi
 done
 
+# Validate the file extension
 while true; do
-    if [[ "$OS_RELEASE" == "amazon-linux" || "$OS_RELEASE" == "red-hat" || "$OS_RELEASE" == "centos" ]]; then
+    if [[ "$OS_RELEASE" == "Amazon Linux" || "$OS_RELEASE" == "Red Hat Enterprise Linux" || "$OS_RELEASE" == "CentOS" ]]; then
         read -p "Enter the file extension [tgz, rpm]: " EXTENSION
     else
         read -p "Enter the file extension [tgz, deb]: " EXTENSION
@@ -105,6 +113,22 @@ while true; do
     fi
 done
 
+# Prompt for Splunk GUI username
+read -p "Enter the Username for Splunk GUI: " SPLUNKUSER
+
+while true; do
+    # Get password from the user (hidden input)
+    read -s -p "Enter Password for Splunk GUI $SPLUNKUSER user: " SPLUNKPASSWORD
+    echo -e "\n"
+
+    # Ensure password is not empty
+    if [[ -z "$SPLUNKPASSWORD" ]]; then
+        echo -e "\033[31mError: Password cannot be empty!\033[0m"
+    else
+        break
+    fi
+done
+
 if [[ "$EXTENSION" == "rpm" ]]; then
     read -p "Enter The Splunk File Name (copy it from the wget link, e.g., splunk-9.2.2-d76edf6f0a15.x86_64.rpm): " FILENAME
 elif [[ "$EXTENSION" == "deb" ]]; then
@@ -112,6 +136,7 @@ elif [[ "$EXTENSION" == "deb" ]]; then
 else
     if [[ "$COMPONENT" == "indexer" || "$COMPONENT" == "search_head" || "$COMPONENT" == "heavy_forwarder" ]]; then
         case "$VERSION" in
+           "9.3.0") FILENAME="splunk-9.3.0-51ccf43db5bd-Linux-x86_64.tgz";;
            "9.2.2") FILENAME="splunk-9.2.2-d76edf6f0a15-Linux-x86_64.tgz" ;;
 	       "9.2.0.1") FILENAME="splunk-9.2.0.1-d8ae995bf219-Linux-x86_64.tgz" ;;
 	       "9.2.1") FILENAME="splunk-9.2.1-78803f08aabb-Linux-x86_64.tgz" ;;
@@ -174,6 +199,8 @@ else
         esac
     elif [[ "$COMPONENT" == "universal_forwarder" ]]; then
         case "$VERSION" in
+           "9.3.0") FILENAME="splunkforwarder-9.3.0-51ccf43db5bd-Linux-x86_64.tgz";;
+           "9.2.2") FILENAME="splunkforwarder-9.2.2-d76edf6f0a15-Linux-x86_64.tgz";;
            "9.2.1") FILENAME="splunkforwarder-9.2.1-78803f08aabb-Linux-x86_64.tgz" ;;
 	       "9.2.0.1") FILENAME="splunkforwarder-9.2.0.1-d8ae995bf219-Linux-x86_64.tgz" ;;
 	       "9.2.0") FILENAME="splunkforwarder-9.2.0-1fff88043d5f-Linux-x86_64.tgz" ;;
@@ -240,40 +267,167 @@ else
 fi
 
 if [ "$COMPONENT" == "universal_forwarder" ]; then
-    sudo wget -O "$FILENAME" "https://download.splunk.com/products/universalforwarder/releases/$VERSION/linux/$FILENAME" > /dev/null 2>&1 && echo -e "\033[33mDownloaded $FILENAME successfully. proceeding to next stage of untaring the $FILENAME\033[0m"
-else
+    # Increase the maximum number of open files
+    ulimit -n 64000 > /dev/null 2>&1 && echo -ne "Setting up Universal Forwarder $VERSION [#                   ] (5%)\r"
+    sleep 1
+
+    # Disable Transparent Huge Pages (THP)
+    echo never | sudo tee /sys/kernel/mm/transparent_hugepage/enabled > /dev/null 2>&1 && echo -ne "Setting up Universal Forwarder $VERSION [##                  ] (10%)\r"
+    sleep 1
+    echo never | sudo tee /sys/kernel/mm/transparent_hugepage/defrag > /dev/null 2>&1 && echo -ne "Setting up Universal Forwarder $VERSION [###                  ] (15%)\r"
+    sleep 1
+
     # Download the Splunk package
-    sudo wget -O "$FILENAME" "https://download.splunk.com/products/splunk/releases/$VERSION/linux/$FILENAME" > /dev/null 2>&1 && echo -e "\033[33mDownloaded $FILENAME successfully. proceding to next stage of untaring the $FILENAME\033[0m"
+    if sudo wget -O "$FILENAME" "https://download.splunk.com/products/universalforwarder/releases/$VERSION/linux/$FILENAME" > /dev/null 2>&1; then
+        echo -ne "Setting up Universal Forwarder $VERSION [####                ] (20%)\r"
+        sleep 1
+    else
+        echo -e "\033[31mError: Failed to download $FILENAME. Please check the URL or network connection.\033[0m"
+        exit 1
+    fi
+else
+    # Increase the maximum number of open files
+    ulimit -n 64000 > /dev/null 2>&1 && echo -ne "Setting up $COMPONENT $VERSION [#                   ] (5%)\r"
+    sleep 1
+
+    # Disable Transparent Huge Pages (THP)
+    echo never | sudo tee /sys/kernel/mm/transparent_hugepage/enabled > /dev/null 2>&1 && echo -ne "Setting up $COMPONENT $VERSION [##                  ] (10%)\r"
+    sleep 1
+    echo never | sudo tee /sys/kernel/mm/transparent_hugepage/defrag > /dev/null 2>&1 && echo -ne "Setting up $COMPONENT $VERSION [###                 ] (15%)\r"
+    sleep 1
+
+    # Download the Splunk package
+    if sudo wget -O "$FILENAME" "https://download.splunk.com/products/splunk/releases/$VERSION/linux/$FILENAME" > /dev/null 2>&1; then
+        echo -ne "Setting up $COMPONENT $VERSION [####                ] (20%)\r"
+        sleep 1
+    else
+        echo -e "\033[31mError: Failed to download $FILENAME. Please check the URL or network connection.\033[0m"
+        exit 1
+    fi
 fi
 
 # Extract the filename without extension
 filename_base="${FILENAME%.*}"
 
-# Check the file extension and extract accordingly
-case "${FILENAME##*.}" in 
-    tgz|tar.gz)
-        sudo tar xvzf "$FILENAME" -C /opt > /dev/null 2>&1 && echo -e "\033[33mCompleted the process of untaring $FILENAME\033[0m"
-        ;;
-    deb)
-        sudo dpkg -i "$FILENAME" > /dev/null 2>&1 && echo -e "\033[33mCompleted the process of installing $FILENAME\033[0m"
-        ;;
-    rpm)
-        sudo rpm -i "$FILENAME" > /dev/null 2>&1 && echo -e "\033[33mCompleted the process of installing $FILENAME\033[0m"
-        ;;
-    *)
-        echo -e "\033[31mUnsupported file format: $FILENAME. Please check it.\033[0m"
-        exit 1
-        ;;
-esac
+if [ "$COMPONENT" == "universal_forwarder" ]; then
+    # Check the file extension and extract accordingly
+    case "${FILENAME##*.}" in 
+        tgz|tar.gz)
+            if sudo tar xvzf "$FILENAME" -C /opt > /dev/null 2>&1; then
+                echo -ne "Setting up Universal Forwarder $VERSION [######              ] (30%)\r"
+                sleep 1
+            else
+                echo -e "\033[31mError: Failed to extract $FILENAME. Please check the file format.\033[0m"
+                exit 1
+            fi
+            ;;
+        deb)
+            if sudo dpkg -i "$FILENAME" > /dev/null 2>&1; then
+                echo -ne "Setting up Universal Forwarder $VERSION [######              ] (30%)\r"
+                sleep 1
+            else
+                echo -e "\033[31mError: Failed to install $FILENAME. Please check the file format.\033[0m"
+                exit 1
+            fi
+            ;;
+        rpm)
+            if sudo rpm -i "$FILENAME" > /dev/null 2>&1; then
+                echo -ne "Setting up Universal Forwarder $VERSION [######              ] (30%)\r"
+                sleep 1
+            else
+                echo -e "\033[31mError: Failed to install $FILENAME. Please check the file format.\033[0m"
+                exit 1
+            fi
+            ;;
+        *)
+            echo -e "\033[31mUnsupported file format: $FILENAME. Please check it.\033[0m"
+            exit 1
+            ;;
+    esac
+else
+    case "${FILENAME##*.}" in 
+        tgz|tar.gz)
+            if sudo tar xvzf "$FILENAME" -C /opt > /dev/null 2>&1; then
+                echo -ne "Setting up $COMPONENT $VERSION [######              ] (30%)\r"
+                sleep 1
+            else
+                echo -e "\033[31mError: Failed to extract $FILENAME. Please check the file format.\033[0m"
+                exit 1
+            fi
+            ;;
+        deb)
+            if sudo dpkg -i "$FILENAME" > /dev/null 2>&1; then
+                echo -ne "Setting up $COMPONENT $VERSION [######              ] (30%)\r"
+                sleep 1
+            else
+                echo -e "\033[31mError: Failed to install $FILENAME. Please check the file format.\033[0m"
+                exit 1
+            fi
+            ;;
+        rpm)
+            if sudo rpm -i "$FILENAME" > /dev/null 2>&1; then
+                echo -ne "Setting up $COMPONENT $VERSION [######              ] (30%)\r"
+                sleep 1
+            else
+                echo -e "\033[31mError: Failed to install $FILENAME. Please check the file format.\033[0m"
+                exit 1
+            fi
+            ;;
+        *)
+            echo -e "\033[31mUnsupported file format: $FILENAME. Please check it.\033[0m"
+            exit 1
+            ;;
+    esac
+fi
 
 # Change ownership of the Splunk installation
 if [ "$COMPONENT" == "universal_forwarder" ]; then
-    sudo chown -R "$USERNAME":"$USERNAME" /opt/splunkforwarder 
+    sudo chown -R "$USERNAME":"$USERNAME" /opt/splunkforwarder > /dev/null 2>&1 && echo -ne "Setting up Universal Forwarder $VERSION [########            ] (40%)\r"
+    sleep 1
+    
+    # Write user credentials to user-seed.conf
+    sudo bash -c "cat > /opt/splunkforwarder/etc/system/local/user-seed.conf <<EOL
+    [user_info]
+    USERNAME = $SPLUNKUSER
+    PASSWORD = $SPLUNKPASSWORD
+    EOL" > /dev/null 2>&1 && echo -ne "Setting up Universal Forwarder $VERSION [##########          ] (50%)\r"
+    sleep 1
+
+    # Start Splunk
+    sudo /opt/splunkforwarder/bin/splunk start --accept-license --answer-yes > /dev/null 2>&1 && echo -ne "Setting up Universal Forwarder $VERSION [##############      ] (70%)\r"
+    sleep 1
 else
     # Change ownership of the Splunk installation
-    sudo chown -R "$USERNAME":"$USERNAME" /opt/splunk
+    sudo chown -R "$USERNAME":"$USERNAME" /opt/splunk > /dev/null 2>&1 && echo -ne "Setting up $COMPONENT $VERSION [########            ] (40%)\r"
+    sleep 1
     # Enable Splunk to start at boot with the new user
-    sudo /opt/splunk/bin/splunk enable boot-start -user "$USERNAME" && echo -e "\033[33mEnabled boot start for $USERNAME for Splunk $COMPONENT\033[0m"
+    sudo /opt/splunk/bin/splunk enable boot-start -user "$USERNAME" --no-prompt > /dev/null 2>&1 && echo -ne "Setting up $COMPONENT $VERSION [##########          ] (50%)\r"
+    sleep 1
+    # Write user credentials to user-seed.conf
+    sudo bash -c "cat > /opt/splunk/etc/system/local/user-seed.conf <<EOL
+[user_info]
+USERNAME = $SPLUNKUSER
+PASSWORD = $SPLUNKPASSWORD
+EOL" > /dev/null 2>&1 && echo -ne "Setting up $COMPONENT $VERSION [############        ] (60%)\r"
+    sleep 1
+
+     # Write server configuration to server.conf
+    sudo bash -c "cat > /opt/splunk/etc/system/local/server.conf <<EOL
+[diskUsage]
+minFreeSpace = 50
+EOL" > /dev/null 2>&1 && echo -ne "Setting up $COMPONENT $VERSION [##############      ] (70%)\r"
+    sleep 1
+
+     # Write inputs configuration to inputs.conf
+    sudo bash -c "cat > /opt/splunk/etc/system/local/inputs.conf <<EOL
+[splunktcp://9997]
+disabled = 0
+EOL"  > /dev/null 2>&1 && echo -ne "Setting up $COMPONENT $VERSION [################    ] (80%)\r"
+    sleep 1
+    
+    # Start Splunk
+     sudo /opt/splunk/bin/splunk start --accept-license --answer-yes  > /dev/null 2>&1 && echo -ne "Setting up $COMPONENT $VERSION [##################  ] (90%)\r"
+    sleep 1
 fi
 
 # The paths of the directories to check
@@ -281,15 +435,18 @@ dir_path1="/opt/splunk/bin"
 dir_path2="/opt/splunkforwarder/bin"
 
 # Use the `-d` test to check if the directories exist
-if [ -d "$dir_path1" ] || [ -d "$dir_path2" ]; then
+if [ -d "$dir_path2" ] ; then
+    > /dev/null 2>&1 && echo -ne "Setting up Universal Forwarder $VERSION [####################] (100%)\r"
+    sleep 1
     echo -e "\n"
     echo -e "\033[33mSplunk $COMPONENT $VERSION is Installed Successfully\033[0m"
     echo -e "\n"
-	if [ "$COMPONENT" == "universal_forwarder" ]; then
-        echo -e "\033[32mStart The Splunk $COMPONENT $VERSION using sudo /opt/splunkforwarder/bin/splunk start --accept-license\033[0m"
-	else
-	    echo -e "\033[32mStart The Splunk $COMPONENT $VERSION using /opt/splunk/bin/splunk start --accept-license\033[0m"
-	fi
+elif [ -d "$dir_path1" ] ; then 
+    > /dev/null 2>&1 && echo -ne "Setting up $COMPONENT $VERSION [####################] (100%)\r"
+    sleep 1
+    echo -e "\n"
+    echo -e "\033[33mSplunk $COMPONENT $VERSION is Installed Successfully\033[0m"
+    echo -e "\n"
 else
     echo -e "\033[33mThe Splunk $COMPONENT $VERSION does not exist. Please execute the script once again\033[0m"
 fi
