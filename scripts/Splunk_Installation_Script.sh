@@ -136,6 +136,8 @@ elif [[ "$EXTENSION" == "deb" ]]; then
 else
     if [[ "$COMPONENT" == "indexer" || "$COMPONENT" == "search_head" || "$COMPONENT" == "heavy_forwarder" ]]; then
         case "$VERSION" in
+           "9.3.2") FILENAME="splunk-9.3.2-d8bb32809498-Linux-x86_64.tgz";;
+	   "9.3.1") FILENAME="splunk-9.3.1-0b8d769cb912-Linux-x86_64.tgz";;
            "9.3.0") FILENAME="splunk-9.3.0-51ccf43db5bd-Linux-x86_64.tgz";;
            "9.2.2") FILENAME="splunk-9.2.2-d76edf6f0a15-Linux-x86_64.tgz" ;;
 	       "9.2.0.1") FILENAME="splunk-9.2.0.1-d8ae995bf219-Linux-x86_64.tgz" ;;
@@ -199,6 +201,8 @@ else
         esac
     elif [[ "$COMPONENT" == "universal_forwarder" ]]; then
         case "$VERSION" in
+	   "9.3.2") FILENAME="splunkforwarder-9.3.2-d8bb32809498-Linux-x86_64.tgz";;
+	   "9.3.1") FILENAME="splunkforwarder-9.3.1-0b8d769cb912-Linux-x86_64.tgz";;	
            "9.3.0") FILENAME="splunkforwarder-9.3.0-51ccf43db5bd-Linux-x86_64.tgz";;
            "9.2.2") FILENAME="splunkforwarder-9.2.2-d76edf6f0a15-Linux-x86_64.tgz";;
            "9.2.1") FILENAME="splunkforwarder-9.2.1-78803f08aabb-Linux-x86_64.tgz" ;;
